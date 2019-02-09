@@ -1,0 +1,69 @@
+<html>
+
+<head>
+	<script src="./bin/md5-sha1.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/core.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/3.1.9-1/sha1.js"></script>
+</head>
+
+<body>
+	<script>
+		Module['onRuntimeInitialized'] = () => {
+			const sha1_init = Module.cwrap('sha1_init');
+			const sha1_update = Module.cwrap('sha1_update', null, ['string']);
+			const sha1_final = Module.cwrap('sha1_final', 'string');
+			const hashCashSolve = Module.cwrap('hashCashSolve', 'int', ['int', 'string']);
+
+			const getZeros = () => parseInt(document.getElementById('zerosCount').value) || 0;
+			const getChallenge = () => document.getElementById('challenge').value;
+
+			window.timeExec = function (func, type) {
+				var t0 = performance.now();
+				var nonce = func();
+				var t1 = performance.now();
+				window.document.getElementsByClassName('data')[0].innerText += `Nonce: ${nonce} - ${type} took ${t1 - t0}  milliseconds. \n`
+			}
+
+			window.execWasm = function () {
+				const repeatedZeros = "0".repeat(getZeros());
+				var i = 0;
+				while (true) {
+					sha1_init();
+					sha1_update(getChallenge() + i);
+					if (sha1_final().startsWith(repeatedZeros)) {
+						return i;
+					}
+					i++;
+				}
+			}
+
+			window.execC = function () {
+				return hashCashSolve(getZeros(), getChallenge())
+			}
+
+
+			window.execJS = function () {
+				console.log(getZeros())
+				const repeatedZeros = "0".repeat(getZeros());
+				var i = 0;
+				while (true) {
+					if (CryptoJS.enc.Hex.stringify(CryptoJS.SHA1(getChallenge() + i)).startsWith(repeatedZeros)) {
+						return i;
+					}
+					++i;
+				}
+			}
+		};
+	</script>
+	<button onclick="window.timeExec(window.execWasm, 'Wasm ----')"> Execute Wasm Test</button>
+	<button onclick="window.timeExec(window.execJS,   'JS ---------')"> Execute JS</button>
+	<button onclick="window.timeExec(window.execC,   'C ---------')"> Execute C</button>
+	<input type="number" id="zerosCount" placeholder="zeros" min="0" value="2" />
+	<input type="text" id="challenge" placeholder="challenge" />
+	<div class="data">
+
+	</div>
+	</textarea>
+</body>
+
+</html>
